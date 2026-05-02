@@ -39,7 +39,7 @@ endif()
 # Add your sources to the target
 target_sources(${EXECUTABLE_NAME} 
 PRIVATE 
-    src/main.cpp
+    src/main.c
     src/iosLaunchScreen.storyboard
 )
 # What is iosLaunchScreen.storyboard? This file describes what Apple's mobile platforms

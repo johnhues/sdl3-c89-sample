@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"clangd.arguments": [
+			"--compile-commands-dir=${workspaceFolder}/build"
+		],
+		"cmake.buildDirectory": "${workspaceFolder}/build",
+		"cmake.copyCompileCommands": "${workspaceFolder}/build/compile_commands.json",
+		"files.exclude": {
+			"build": true
+		},
+		"cmake.preferredGenerators": [
+			"Ninja Multi-Config"
+		]
+	}
+}
