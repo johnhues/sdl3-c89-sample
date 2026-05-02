@@ -54,8 +54,41 @@ if(APPLE)
     target_sources("${EXECUTABLE_NAME}" PRIVATE "src/logo.png")
 endif()
 
-# Set C++ version
-target_compile_features(${EXECUTABLE_NAME} PUBLIC cxx_std_20)
+# Set C version and warnings-as-errors
+# SDL3 headers require C99 minimum (_Bool, long long); our code stays C89-style
+set_property(TARGET ${EXECUTABLE_NAME} PROPERTY C_STANDARD 99)
+set_property(TARGET ${EXECUTABLE_NAME} PROPERTY C_STANDARD_REQUIRED ON)
+set_property(TARGET ${EXECUTABLE_NAME} PROPERTY C_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(${EXECUTABLE_NAME} PRIVATE
+        /W4 /WX           # all warnings as errors
+        /w14062           # missing enum case in switch
+        /RTC1             # runtime: uninitialized vars, stack corruption
+        /sdl              # additional security checks
+    )
+    target_compile_options(${EXECUTABLE_NAME} PRIVATE /fsanitize=address)
+else()
+    target_compile_options(${EXECUTABLE_NAME} PRIVATE
+        -Wall -Wextra -Werror
+        -Wreturn-type         # missing return value
+        -Wuninitialized       # reading uninitialized vars
+        -Wnull-dereference    # likely null pointer dereference
+        -Wformat=2            # stricter printf/scanf format checks
+        -Wimplicit-fallthrough # missing break in switch
+        -fdiagnostics-color=always
+    )
+    # Sanitizers: address (memory bugs) + undefined behavior
+    # Not supported on Emscripten (it uses its own leak checker)
+    if(NOT EMSCRIPTEN AND NOT ANDROID)
+        target_compile_options(${EXECUTABLE_NAME} PRIVATE
+            -fsanitize=address,undefined
+            -fno-omit-frame-pointer  # readable ASAN stack traces
+        )
+        target_link_options(${EXECUTABLE_NAME} PRIVATE
+            -fsanitize=address,undefined
+        )
+    endif()
+endif()
 
 # on Web targets, we need CMake to generate a HTML webpage. 
 if(EMSCRIPTEN)
