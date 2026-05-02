@@ -1,5 +1,3 @@
-/* SDL_MAIN_USE_CALLBACKS is necessary for the new callbacks API.
-   To use the legacy API, don't define this. */
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_init.h>
@@ -33,26 +31,13 @@ SDL_AppResult SDL_Fail( void )
 
 SDL_AppResult SDL_AppInit( void** appstate, int argc, char* argv[] )
 {
-	char fontPath[ 1024 ];
-	char svgPath[ 1024 ];
-	char musicPath[ 1024 ];
-	const char* basePath = NULL;
-	const char* text = "Hello SDL!";
 	SDL_Window* window;
 	SDL_Renderer* renderer;
-	TTF_Font* font;
-	SDL_Color white;
-	SDL_Surface* surfaceMessage;
+	const char* basePath;
 	SDL_Texture* messageTex;
-	SDL_Surface* svgSurface;
-	SDL_Texture* tex;
-	SDL_PropertiesID messageTexProps;
+	SDL_Texture* imageTex;
 	SDL_FRect textRect;
-	MIX_Mixer* mixer;
 	MIX_Track* mixerTrack;
-	MIX_Audio* music;
-	AppContext* app;
-
 	(void)argc; /* unused function parameter */
 	(void)argv; /* unused function parameter */
 
@@ -99,60 +84,82 @@ SDL_AppResult SDL_AppInit( void** appstate, int argc, char* argv[] )
 #endif
 
 	/* load the font */
-	SDL_snprintf( fontPath, sizeof( fontPath ), "%s%s", basePath, "Inter-VariableFont.ttf" );
-	font = TTF_OpenFont( fontPath, 36 );
-	if( !font )
 	{
-		return SDL_Fail();
+		char fontPath[ 1024 ];
+		const char* text;
+		TTF_Font* font;
+		SDL_Color white;
+		SDL_Surface* surfaceMessage;
+
+		SDL_snprintf( fontPath, sizeof( fontPath ), "%s%s", basePath, "Inter-VariableFont.ttf" );
+		font = TTF_OpenFont( fontPath, 36 );
+		if( !font )
+		{
+			return SDL_Fail();
+		}
+
+		/* render the font to a surface */
+		text = "Hello SDL!";
+		white.r = 255;
+		white.g = 255;
+		white.b = 255;
+		white.a = 255;
+		surfaceMessage = TTF_RenderText_Solid( font, text, SDL_strlen( text ), white );
+
+		/* make a texture from the surface */
+		messageTex = SDL_CreateTextureFromSurface( renderer, surfaceMessage );
+
+		/* we no longer need the font or the surface */
+		TTF_CloseFont( font );
+		SDL_DestroySurface( surfaceMessage );
 	}
-
-	/* render the font to a surface */
-	white.r = 255;
-	white.g = 255;
-	white.b = 255;
-	white.a = 255;
-	surfaceMessage = TTF_RenderText_Solid( font, text, SDL_strlen( text ), white );
-
-	/* make a texture from the surface */
-	messageTex = SDL_CreateTextureFromSurface( renderer, surfaceMessage );
-
-	/* we no longer need the font or the surface */
-	TTF_CloseFont( font );
-	SDL_DestroySurface( surfaceMessage );
 
 	/* load the SVG */
-	SDL_snprintf( svgPath, sizeof( svgPath ), "%s%s", basePath, "gs_tiger.svg" );
-	svgSurface = IMG_Load( svgPath );
-	tex = SDL_CreateTextureFromSurface( renderer, svgSurface );
-	SDL_DestroySurface( svgSurface );
+	{
+		char svgPath[ 1024 ];
+		SDL_Surface* svgSurface;
+
+		SDL_snprintf( svgPath, sizeof( svgPath ), "%s%s", basePath, "gs_tiger.svg" );
+		svgSurface = IMG_Load( svgPath );
+		imageTex = SDL_CreateTextureFromSurface( renderer, svgSurface );
+		SDL_DestroySurface( svgSurface );
+	}
 
 	/* get the on-screen dimensions of the text */
-	messageTexProps = SDL_GetTextureProperties( messageTex );
-	textRect.x = 0;
-	textRect.y = 0;
-	textRect.w = (float)SDL_GetNumberProperty( messageTexProps, SDL_PROP_TEXTURE_WIDTH_NUMBER, 0 );
-	textRect.h = (float)SDL_GetNumberProperty( messageTexProps, SDL_PROP_TEXTURE_HEIGHT_NUMBER, 0 );
+	{
+		SDL_PropertiesID props = SDL_GetTextureProperties( messageTex );
+		textRect.x = 0;
+		textRect.y = 0;
+		textRect.w = (float)SDL_GetNumberProperty( props, SDL_PROP_TEXTURE_WIDTH_NUMBER, 0 );
+		textRect.h = (float)SDL_GetNumberProperty( props, SDL_PROP_TEXTURE_HEIGHT_NUMBER, 0 );
+	}
 
 	/* init SDL Mixer */
-	mixer = MIX_CreateMixerDevice( SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL );
-	if( mixer == NULL )
 	{
-		return SDL_Fail();
+		char musicPath[ 1024 ];
+		MIX_Mixer* mixer;
+		MIX_Audio* music;
+
+		mixer = MIX_CreateMixerDevice( SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL );
+		if( mixer == NULL )
+		{
+			return SDL_Fail();
+		}
+
+		mixerTrack = MIX_CreateTrack( mixer );
+
+		/* load the music */
+		SDL_snprintf( musicPath, sizeof( musicPath ), "%s%s", basePath, "the_entertainer.ogg" );
+		music = MIX_LoadAudio( mixer, musicPath, 0 );
+		if( !music )
+		{
+			return SDL_Fail();
+		}
+
+		/* play the music (does not loop) */
+		MIX_SetTrackAudio( mixerTrack, music );
+		MIX_PlayTrack( mixerTrack, 0 );
 	}
-
-	mixerTrack = MIX_CreateTrack( mixer );
-
-	/* load the music */
-	SDL_snprintf( musicPath, sizeof( musicPath ), "%s%s", basePath, "the_entertainer.ogg" );
-	music = MIX_LoadAudio( mixer, musicPath, 0 );
-	if( !music )
-	{
-		return SDL_Fail();
-	}
-
-	/* play the music (does not loop) */
-	MIX_SetTrackAudio( mixerTrack, music );
-	MIX_PlayTrack( mixerTrack, 0 );
 
 	/* print some information about the window */
 	SDL_ShowWindow( window );
@@ -169,15 +176,17 @@ SDL_AppResult SDL_AppInit( void** appstate, int argc, char* argv[] )
 	}
 
 	/* set up the application data */
-	app = (AppContext*)calloc( 1, sizeof( AppContext ) );
-	*appstate = app;
-	app->window = window;
-	app->renderer = renderer;
-	app->messageTex = messageTex;
-	app->imageTex = tex;
-	app->messageDest = textRect;
-	app->track = mixerTrack;
-	app->app_quit = SDL_APP_CONTINUE;
+	{
+		AppContext* app = (AppContext*)calloc( 1, sizeof( AppContext ) );
+		*appstate = app;
+		app->window = window;
+		app->renderer = renderer;
+		app->messageTex = messageTex;
+		app->imageTex = imageTex;
+		app->messageDest = textRect;
+		app->track = mixerTrack;
+		app->app_quit = SDL_APP_CONTINUE;
+	}
 
 	SDL_SetRenderVSync( renderer, -1 ); /* enable vsync */
 
@@ -228,8 +237,8 @@ void SDL_AppQuit( void* appstate, SDL_AppResult result )
 		SDL_DestroyWindow( app->window );
 
 		/* prevent the music from abruptly ending */
-		MIX_StopTrack( app->track, MIX_TrackMSToFrames( app->track, 1000 ) );
-		SDL_Delay( 1000 );
+		MIX_StopTrack( app->track, MIX_TrackMSToFrames( app->track, 250 ) );
+		SDL_Delay( 250 );
 		SDL_CloseAudioDevice( app->audioDevice );
 
 		free( app );

@@ -77,6 +77,10 @@ else()
         -Wimplicit-fallthrough # missing break in switch
         -fdiagnostics-color=always
     )
+    # Enforce C89-style discipline on main.c (SDL3 headers prevent full -std=c89)
+    set_source_files_properties( src/main.c PROPERTIES
+        COMPILE_OPTIONS "-Wdeclaration-after-statement"
+    )
     # Sanitizers: address (memory bugs) + undefined behavior
     # Not supported on Emscripten (it uses its own leak checker)
     if(NOT EMSCRIPTEN AND NOT ANDROID)
