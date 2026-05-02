@@ -164,12 +164,12 @@ SDL_AppResult SDL_AppInit( void** appstate, int argc, char* argv[] )
 	/* print some information about the window */
 	SDL_ShowWindow( window );
 	{
-		int width, height, bbwidth, bbheight;
+		int width, height, backbufferWidth, backbufferHeight;
 		SDL_GetWindowSize( window, &width, &height );
-		SDL_GetWindowSizeInPixels( window, &bbwidth, &bbheight );
+		SDL_GetWindowSizeInPixels( window, &backbufferWidth, &backbufferHeight );
 		SDL_Log( "Window size: %ix%i", width, height );
-		SDL_Log( "Backbuffer size: %ix%i", bbwidth, bbheight );
-		if( width != bbwidth )
+		SDL_Log( "Backbuffer size: %ix%i", backbufferWidth, backbufferHeight );
+		if( width != backbufferWidth )
 		{
 			SDL_Log( "This is a highdpi environment." );
 		}
